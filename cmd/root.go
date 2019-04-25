@@ -25,7 +25,14 @@ var rootCmd = &cobra.Command{
 			PrintVersion()
 			return
 		}
-		if ok := s3.IsBucket(); !ok {
+
+		session, err := config.NewAWSSession(profile)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+
+		if ok := s3.IsBucket(*session, bucketName); !ok {
 			fmt.Printf("The bucket name `%s` was not found in profile `%s`\n", bucketName, profile)
 			return
 		} else {
