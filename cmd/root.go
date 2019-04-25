@@ -51,16 +51,20 @@ func Execute() {
 	}
 }
 
-var version bool
-var profile string
-var bucketName string
-var path string
+var (
+	version bool
+	profile string
+	bucketName string
+	path string
+	isRecursiveSearch bool
+)
 
 func init() {
 	rootCmd.Flags().BoolVarP(&version, "version", "v", false, "Print the version of s3-grep")
 	rootCmd.Flags().StringVarP(&profile, "profile", "", "", "The AWS profile the S3 bucketName is hosted in")
 	rootCmd.Flags().StringVarP(&bucketName, "bucket", "b", "", "The bucketName name to grep in")
-	rootCmd.Flags().StringVarP(&bucketName, "path", "p", "/", "The path to grep in")
+	rootCmd.Flags().StringVarP(&path, "path", "p", "/", "The path to grep in")
+	rootCmd.Flags().BoolVarP(&isRecursiveSearch, "recursive", "r", false, "Defines if the grep is performed recursively")
 
 	rootCmd.MarkFlagRequired("profile")
 	rootCmd.MarkFlagRequired("bucket")
