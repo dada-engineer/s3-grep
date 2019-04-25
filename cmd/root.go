@@ -11,7 +11,7 @@ import (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "s3-grep [search query]",
+	Use: `s3-grep search query --bucket --profile [--path] [--recursive] [--version]`,
 	Short: "Grep contents of an object in S3",
 	Long: "Grep contents of an object in S3",
 	Args: func(cmd *cobra.Command, args []string) error {
