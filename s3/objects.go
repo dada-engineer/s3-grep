@@ -4,6 +4,8 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3iface"
+	"github.com/aws/aws-sdk-go/service/s3/s3manager"
+	"github.com/dabdada/s3-grep/config"
 )
 
 // list all objects in the specified bucket
@@ -22,4 +24,15 @@ func listObjects(svc s3iface.S3API, bucketName string) ([]string, error) {
 	}
 
 	return objects, nil
+}
+
+func getObjectContent(session *config.AWSSession, bucketName string, key string) ([]byte, int, error) {
+	buff := &aws.WriteAtBuffer{}
+	downloader := s3manager.NewDownloader(session.Session)
+	numBytes, err := downloader.Download(buff, &s3.GetObjectInput{
+		Bucket: aws.String(bucketName),
+		Key:    aws.String(key),
+	})
+
+	return buff.Bytes(), numBytes, err
 }
