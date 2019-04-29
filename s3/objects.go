@@ -26,7 +26,7 @@ func listObjects(svc s3iface.S3API, bucketName string) ([]string, error) {
 	return objects, nil
 }
 
-func getObjectContent(session *config.AWSSession, bucketName string, key string) ([]byte, int, error) {
+func getObjectContent(session *config.AWSSession, bucketName string, key string) ([]byte, int64, error) {
 	buff := &aws.WriteAtBuffer{}
 	downloader := s3manager.NewDownloader(session.Session)
 	numBytes, err := downloader.Download(buff, &s3.GetObjectInput{
