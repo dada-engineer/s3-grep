@@ -79,7 +79,7 @@ func grepInObjectContent(session *config.AWSSession, bucketName string, objects 
 	for _, object := range objects {
 		content, numBytes, err := getObjectContent(session, bucketName, object)
 		if err != nil {
-			// add file to channel with error encountered
+			fmt.Errorf("%s:%s\n", err, object)
 		} else if numBytes > 0 {
 			for i, line := range bytes.Split(content, []byte("\n")) {
 				if bytes.Contains(line, []byte(query)) {
