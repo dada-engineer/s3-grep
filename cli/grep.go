@@ -1,4 +1,4 @@
-package s3
+package cli
 
 import (
 	"bytes"
@@ -8,10 +8,11 @@ import (
 
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/dabdada/s3-grep/config"
+	thisS3 "github.com/dabdada/s3-grep/s3"
 )
 
-type GrepResult struct {
-	Key string
+type grepResult struct {
+	Key     string
 	LineNum int
 	Excerpt []byte
 }
@@ -20,17 +21,17 @@ type GrepResult struct {
 func Grep(session *config.AWSSession, bucketName string, query string) {
 	svc := s3.New(session.Session)
 
-	objects, err := listObjects(svc, bucketName)
+	objects, err := thisS3.ListObjects(svc, bucketName)
 
 	if err != nil {
-		fmt.Errorf("%s\n", err)
+		fmt.Printf("%s\n", err)
 		return
 	}
 
-	results := make(chan GrepResult)
+	results := make(chan grepResult)
 	done := make(chan int)
 
-	dividedObjects := divideObjects(objects)
+	dividedObjects := partitionS3Objects(objects, runtime.NumCPU()-1)
 	for _, chunk := range dividedObjects {
 		go grepInObjectContent(session, bucketName, chunk, query, results, done)
 	}
@@ -40,7 +41,7 @@ func Grep(session *config.AWSSession, bucketName string, query string) {
 		select {
 		case result := <-results:
 			fmt.Printf("%s %s:%d\n", result.Key, result.Excerpt, result.LineNum)
-		case i := <- done:
+		case i := <-done:
 			finished += i
 		default:
 			if finished == len(dividedObjects) {
@@ -53,12 +54,11 @@ func Grep(session *config.AWSSession, bucketName string, query string) {
 
 }
 
-// Divide list of objects in bucket to NumCPU same sized chunks, for concurrent processing
-func divideObjects(objects []string) [][]string {
+// Divide list of objects in bucket to desiredPartitionNum same sized chunks, for concurrent processing
+func partitionS3Objects(objects []string, desiredPartitionNum int) [][]string {
 	var divided [][]string
-	numCPU := runtime.NumCPU() - 1
 	numObjects := len(objects)
-	chunkSize := (numObjects + numCPU - 1) / numCPU
+	chunkSize := (numObjects + desiredPartitionNum - 1) / desiredPartitionNum
 
 	for i := 0; i < numObjects; i += chunkSize {
 		end := i + chunkSize
@@ -75,15 +75,15 @@ func divideObjects(objects []string) [][]string {
 
 // Grep within the content of a single S3 object
 func grepInObjectContent(session *config.AWSSession, bucketName string, objects []string,
-						 query string, results chan<- GrepResult, done chan<- int) {
+	query string, results chan<- grepResult, done chan<- int) {
 	for _, object := range objects {
-		content, numBytes, err := getObjectContent(session, bucketName, object)
+		content, numBytes, err := thisS3.GetObjectContent(session, bucketName, object)
 		if err != nil {
-			fmt.Errorf("%s:%s\n", err, object)
+			fmt.Printf("%s:%s\n", err, object)
 		} else if numBytes > 0 {
 			for i, line := range bytes.Split(content, []byte("\n")) {
 				if bytes.Contains(line, []byte(query)) {
-					results <- GrepResult{
+					results <- grepResult{
 						Key:     object,
 						LineNum: i + 1,
 						Excerpt: getContentExcerpt(line, []byte(query)),
@@ -97,7 +97,7 @@ func grepInObjectContent(session *config.AWSSession, bucketName string, objects 
 
 func getContentExcerpt(text []byte, query []byte) []byte {
 	index := bytes.Index(text, query)
-	from := int(math.Max(float64(index) - 10, 0))
+	from := int(math.Max(float64(index)-10, 0))
 	to := index + len(query) + 10
 
 	return text[from:to]
