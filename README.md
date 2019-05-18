@@ -25,3 +25,5 @@ You need to install Golang >= 1.11 ([Download](https://golang.org/dl/))
 
     $ git clone git@github.com:dabdada/s3-grep.git
     $ export GO111MODULE=on
+
+Build with `go build` and run tests with `go test ./...`
