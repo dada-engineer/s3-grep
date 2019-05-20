@@ -40,7 +40,7 @@ func Grep(session *config.AWSSession, bucketName string, query string, ignoreCas
 	for {
 		select {
 		case result := <-results:
-			fmt.Printf("%s %s:%d\n", result.Key, result.Excerpt, result.LineNum)
+			fmt.Printf("s3://%s/%s %s:%d\n", bucketName, result.Key, result.Excerpt, result.LineNum)
 		case i := <-done:
 			finished += i
 		default:
