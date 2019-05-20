@@ -18,7 +18,7 @@ type grepResult struct {
 }
 
 // Grep in objects in a thisS3 bucket
-func Grep(session *config.AWSSession, bucketName string, query string) {
+func Grep(session *config.AWSSession, bucketName string, query string, ignoreCase bool) {
 	svc := s3.New(session.Session)
 
 	objects, err := thisS3.ListObjects(svc, bucketName)
@@ -33,7 +33,7 @@ func Grep(session *config.AWSSession, bucketName string, query string) {
 
 	dividedObjects := partitionS3Objects(objects, runtime.NumCPU()-1)
 	for _, chunk := range dividedObjects {
-		go grepInObjectContent(session, bucketName, chunk, query, results, done)
+		go grepInObjectContent(session, bucketName, chunk, query, ignoreCase, results, done)
 	}
 
 	finished := 0
@@ -75,14 +75,14 @@ func partitionS3Objects(objects []string, desiredPartitionNum int) [][]string {
 
 // Grep within the content of a single S3 object
 func grepInObjectContent(session *config.AWSSession, bucketName string, objects []string,
-	query string, results chan<- grepResult, done chan<- int) {
+	query string, ignoreCase bool, results chan<- grepResult, done chan<- int) {
 	for _, object := range objects {
 		content, numBytes, err := thisS3.GetObjectContent(session, bucketName, object)
 		if err != nil {
 			fmt.Printf("%s:%s\n", err, object)
 		} else if numBytes > 0 {
 			for i, line := range bytes.Split(content, []byte("\n")) {
-				if bytes.Contains(line, []byte(query)) {
+				if caseAwareContains(line, []byte(query), ignoreCase) {
 					results <- grepResult{
 						Key:     object,
 						LineNum: i + 1,
@@ -101,4 +101,12 @@ func getContentExcerpt(text []byte, query []byte) []byte {
 	to := index + len(query) + 10
 
 	return text[from:to]
+}
+
+func caseAwareContains(b []byte, sub []byte, ignoreCase bool) bool {
+	if ignoreCase {
+		return bytes.Contains(bytes.ToUpper(b), bytes.ToUpper(sub))
+	} else {
+		return bytes.Contains(b, sub)
+	}
 }
