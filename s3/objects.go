@@ -8,7 +8,7 @@ import (
 	"github.com/dabdada/s3-grep/config"
 )
 
-// list all objects in the specified bucket
+// ListObjects lists all objects in the specified bucket
 func ListObjects(svc s3iface.S3API, bucketName string) ([]string, error) {
 	var objects []string
 	err := svc.ListObjectsPages(&s3.ListObjectsInput{
@@ -26,6 +26,7 @@ func ListObjects(svc s3iface.S3API, bucketName string) ([]string, error) {
 	return objects, nil
 }
 
+// GetObjectContent loads the content of a S3 object key into a buffer
 func GetObjectContent(session *config.AWSSession, bucketName string, key string) ([]byte, int64, error) {
 	buff := &aws.WriteAtBuffer{}
 	downloader := s3manager.NewDownloader(session.Session)
