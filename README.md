@@ -5,8 +5,6 @@
 [![MIT license](https://img.shields.io/github/license/dabdada/s3-grep.svg?style=flat-square)](https://github.com/dabdada/s3-grep/blob/master/LICENSE)
 
 
-__This is not yet usable. Work in Progress__
-
 Command Line Interface to grep through s3 buckets
 
 ## Installation
@@ -14,6 +12,14 @@ Command Line Interface to grep through s3 buckets
 ### Use go get
 
     $ go get -u github.com/dabdada/s3-grep
+
+## Usage
+
+    $ s3-grep search_query --profile <some_configured_aws_profile> --bucket <some_bucket_name>
+
+Example:
+
+    $ s3-grep hello --profile dev --bucket myBucket
 
 ## Requirements
 
