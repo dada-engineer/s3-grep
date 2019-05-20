@@ -17,7 +17,7 @@ Command Line Interface to grep through s3 buckets
 
     $ s3-grep search_query --profile <some_configured_aws_profile> --bucket <some_bucket_name>
 
-Example:
+### Example:
 
     $ s3-grep hello --profile dev --bucket myBucket
 
