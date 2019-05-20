@@ -15,7 +15,7 @@ func IsBucket(session config.AWSSession, bucketName string) bool {
 	_, err := svc.HeadBucket(headInput)
 
 	if err != nil {
-		return true
+		return false
 	}
-	return false
+	return true
 }
