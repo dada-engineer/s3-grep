@@ -5,7 +5,7 @@
 [![MIT license](https://img.shields.io/github/license/dabdada/s3-grep.svg?style=flat-square)](https://github.com/dabdada/s3-grep/blob/master/LICENSE)
 
 
-Command Line Interface to grep through s3 buckets
+Command Line Interface to grep through contents of objects in s3 buckets.
 
 ## Installation
 
