@@ -21,6 +21,10 @@ Example:
 
     $ s3-grep hello --profile dev --bucket myBucket
 
+If you want to search for multiple seperated words you need to enclose the search query in quotation marks:
+
+    $ s3-grep "hello world" --profile dev --bucket myBucket
+
 ## Requirements
 
 You need your AWS credentials configured ([How To](https://docs.aws.amazon.com/sdk-for-java/v1/developer-guide/setup-credentials.html)) and have the necassary access rights for the bucket to grep in.
