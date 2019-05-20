@@ -95,6 +95,9 @@ func grepInObjectContent(session *config.AWSSession, bucketName string, objects 
 	done <- 1
 }
 
+// Get a small Excerpt of a byte array
+//
+// 10 chars before and after the substring
 func getContentExcerpt(text []byte, query []byte) []byte {
 	index := bytes.Index(text, query)
 	from := int(math.Max(float64(index)-10, 0))
@@ -103,6 +106,7 @@ func getContentExcerpt(text []byte, query []byte) []byte {
 	return text[from:to]
 }
 
+// A case aware contains function for byte arrays
 func caseAwareContains(b []byte, sub []byte, ignoreCase bool) bool {
 	if ignoreCase {
 		return bytes.Contains(bytes.ToUpper(b), bytes.ToUpper(sub))
