@@ -10,12 +10,15 @@ import (
 	"github.com/dabdada/s3-grep/config"
 )
 
-// Object safes Key and Content of a object in S3
+// Object provides an interface for Objects in a S3 Bucket
+type s3Object interface {
+	GetObjectContent (*config.AWSSession, string) (string, int64, error)
+}
+
+// Object provides an Object with a Key
 type Object struct {
-	Key      string
-	Content  []byte
-	NumBytes int64
-	Error    error
+	Object s3Object
+	Key    string
 }
 
 // NewObject is a constructor for Objects
@@ -42,10 +45,9 @@ func ListObjects(svc s3iface.S3API, bucketName string) ([]Object, error) {
 }
 
 // GetObjectContent loads the content of a S3 object key into a buffer
-func (o Object) GetObjectContent(session *config.AWSSession, bucketName string) {
+func (o Object) GetObjectContent(session *config.AWSSession, bucketName string) ([]byte, int64, error) {
 	if o.Key == "" {
-		o.Error = errors.New("Object has no Key")
-		return
+		return []byte{}, 0, errors.New("Object has no Key")
 	}
 	buff := &aws.WriteAtBuffer{}
 	downloader := s3manager.NewDownloader(session.Session)
@@ -54,7 +56,5 @@ func (o Object) GetObjectContent(session *config.AWSSession, bucketName string) 
 		Key:    aws.String(o.Key),
 	})
 
-	o.Content = buff.Bytes()
-	o.NumBytes = numBytes
-	o.Error = err
+	return buff.Bytes(), numBytes, err
 }

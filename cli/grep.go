@@ -77,11 +77,11 @@ func partitionS3Objects(objects []thisS3.Object, desiredPartitionNum int) [][]th
 func grepInObjectContent(session *config.AWSSession, bucketName string, objects []thisS3.Object,
 	query string, ignoreCase bool, results chan<- grepResult, done chan<- int) {
 	for _, object := range objects {
-		object.GetObjectContent(session, bucketName)
-		if object.Error != nil {
-			fmt.Printf("%s:%s\n", object.Error, object.Key)
-		} else if object.NumBytes > 0 {
-			for i, line := range bytes.Split(object.Content, []byte("\n")) {
+		content, numBytes, err := object.GetObjectContent(session, bucketName)
+		if err != nil {
+			fmt.Printf("%s:%s\n", err, object.Key)
+		} else if numBytes > 0 {
+			for i, line := range bytes.Split(content, []byte("\n")) {
 				if caseAwareContains(line, []byte(query), ignoreCase) {
 					results <- grepResult{
 						Key:     object.Key,
