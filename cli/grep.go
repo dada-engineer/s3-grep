@@ -99,9 +99,10 @@ func grepInObjectContent(session *config.AWSSession, bucketName string, objects 
 //
 // 10 chars before and after the substring
 func getContentExcerpt(text []byte, query []byte) []byte {
-	index := bytes.Index(text, query)
-	from := int(math.Max(float64(index)-10, 0))
-	to := index + len(query) + 10
+	queryLength := float64(len(query))
+	index := float64(bytes.Index(text, query))
+	from := int(math.Max(index-10, 0))
+	to := int(math.Min(float64(index+queryLength+ 10), float64(len(text))))
 
 	return text[from:to]
 }
@@ -110,7 +111,6 @@ func getContentExcerpt(text []byte, query []byte) []byte {
 func caseAwareContains(b []byte, sub []byte, ignoreCase bool) bool {
 	if ignoreCase {
 		return bytes.Contains(bytes.ToUpper(b), bytes.ToUpper(sub))
-	} else {
-		return bytes.Contains(b, sub)
 	}
+	return bytes.Contains(b, sub)
 }
