@@ -77,7 +77,7 @@ func partitionS3Objects(objects []thisS3.StoredObject, desiredPartitionNum int) 
 func grepInObjectContent(session *config.AWSSession, bucketName string, objects []thisS3.StoredObject,
 	query string, ignoreCase bool, results chan<- grepResult, done chan<- int) {
 	for _, object := range objects {
-		content, numBytes, err := object.GetObjectContent(session, bucketName)
+		content, numBytes, err := object.GetContent(session, bucketName)
 		if err != nil {
 			fmt.Printf("%s:%s\n", err, object.GetKey())
 		} else if numBytes > 0 {

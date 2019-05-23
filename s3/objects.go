@@ -12,8 +12,8 @@ import (
 
 // StoredObject provides an interface for Objects in a Cloud Storage
 type StoredObject interface {
-	GetKey () (string)
-	GetObjectContent (*config.AWSSession, string) ([]byte, int64, error)
+	GetKey() (string)
+	GetContent(*config.AWSSession, string) ([]byte, int64, error)
 }
 
 // Object provides an Object with a Key
@@ -27,7 +27,7 @@ func (o Object) GetKey() string {
 }
 
 // GetObjectContent loads the content of a S3 object key into a buffer
-func (o Object) GetObjectContent(session *config.AWSSession, bucketName string) ([]byte, int64, error) {
+func (o Object) GetContent(session *config.AWSSession, bucketName string) ([]byte, int64, error) {
 	if o.Key == "" {
 		return []byte{}, 0, errors.New("Object has no Key")
 	}

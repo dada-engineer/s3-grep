@@ -1,49 +1,94 @@
 package cli
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/dabdada/s3-grep/config"
+	"github.com/dabdada/s3-grep/s3"
+)
+
+type testObject struct {
+	Key string
+}
+
+func (o testObject) GetKey() string {
+	return o.Key
+}
+
+func (o testObject) GetContent(session *config.AWSSession, bucketName string) ([]byte, int64, error) {
+	return []byte{}, 0, nil
+}
+
+func newTestObject(key string) s3.StoredObject {
+	return testObject{Key: key}
+}
 
 func TestPartitionS3Objects(t *testing.T) {
 	partitionS3ObjectsTestData := []struct {
 		name     string
-		in       []string
+		in       []s3.StoredObject
 		num      int
-		expected [][]string
+		expected [][]s3.StoredObject
 	}{
 		{
-			"empty list",
-			[]string{}, 1, [][]string{},
+			name: "empty list",
+			in: []s3.StoredObject{},
+			num: 1,
+			expected: [][]s3.StoredObject{},
 		},
 		{
-			"one list item divided into one partition",
-			[]string{"test"}, 1, [][]string{[]string{"test"}},
+			name: "one list item divided into one partition",
+			in: []s3.StoredObject{newTestObject("test")},
+			num: 1,
+			expected: [][]s3.StoredObject{[]s3.StoredObject{newTestObject("test")}},
 		},
 		{
-			"one list item divided into two partitons",
-			[]string{"test"}, 2, [][]string{[]string{"test"}, []string{}},
+			name: "one list item divided into two partitons",
+			in: []s3.StoredObject{newTestObject("test")},
+			num: 2,
+			expected: [][]s3.StoredObject{[]s3.StoredObject{newTestObject("test")}, []s3.StoredObject{}},
 		},
 		{
-			"two list items divided into one partition",
-			[]string{"test", "some"}, 1, [][]string{[]string{"test", "some"}},
+			name: "two list items divided into one partition",
+			in: []s3.StoredObject{newTestObject("test"), newTestObject("some")},
+			num: 1,
+			expected: [][]s3.StoredObject{[]s3.StoredObject{newTestObject("test"), newTestObject("some")}},
 		},
 		{
-			"two list items divided into two partitions",
-			[]string{"test", "some"}, 2, [][]string{[]string{"test"}, []string{"some"}},
+			name: "two list items divided into two partitions",
+			in: []s3.StoredObject{newTestObject("test"), newTestObject("some")},
+			num: 2,
+			expected: [][]s3.StoredObject{[]s3.StoredObject{newTestObject("test")}, []s3.StoredObject{newTestObject("some")}},
 		},
 		{
-			"two list items divided into three partitions",
-			[]string{"test", "some"}, 3, [][]string{[]string{"test"}, []string{"some"}, []string{}},
+			name: "two list items divided into three partitions",
+			in: []s3.StoredObject{newTestObject("test"), newTestObject("some")},
+			num: 3,
+			expected: [][]s3.StoredObject{
+				[]s3.StoredObject{newTestObject("test")}, []s3.StoredObject{newTestObject("some")}, []s3.StoredObject{}},
 		},
 		{
-			"three list items divided into one partition",
-			[]string{"test", "some", "strings"}, 1, [][]string{[]string{"test", "some", "strings"}},
+			name: "three list items divided into one partition",
+			in: []s3.StoredObject{newTestObject("test"), newTestObject("some"), newTestObject("objects")},
+			num: 1,
+			expected: [][]s3.StoredObject{
+				[]s3.StoredObject{newTestObject("test"), newTestObject("some"), newTestObject("objects")}},
 		},
 		{
-			"three list items divided into two partitions",
-			[]string{"test", "some", "strings"}, 2, [][]string{[]string{"test", "some"}, []string{"strings"}},
+			name: "three list items divided into two partitions",
+			in: []s3.StoredObject{newTestObject("test"), newTestObject("some"), newTestObject("objects")},
+			num: 2,
+			expected: [][]s3.StoredObject{
+				[]s3.StoredObject{newTestObject("test"), newTestObject("some")}, []s3.StoredObject{newTestObject("objects")}},
 		},
 		{
-			"three list items divided into three partitions",
-			[]string{"test", "some", "strings"}, 3, [][]string{[]string{"test"}, []string{"some"}, []string{"strings"}},
+			name: "three list items divided into three partitions",
+			in: []s3.StoredObject{newTestObject("test"), newTestObject("some"), newTestObject("objects")},
+			num: 3,
+			expected: [][]s3.StoredObject{
+				[]s3.StoredObject{newTestObject("test")},
+				[]s3.StoredObject{newTestObject("some")},
+				[]s3.StoredObject{newTestObject("objects")}},
 		},
 	}
 
