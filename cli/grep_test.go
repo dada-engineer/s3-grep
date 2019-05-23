@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"bytes"
 	"testing"
 
 	"github.com/dabdada/s3-grep/config"
@@ -8,7 +9,10 @@ import (
 )
 
 type testObject struct {
-	Key string
+	Key 	 string
+	Content  []byte
+	NumBytes int64
+	Error 	 error
 }
 
 func (o testObject) GetKey() string {
@@ -16,11 +20,11 @@ func (o testObject) GetKey() string {
 }
 
 func (o testObject) GetContent(session *config.AWSSession, bucketName string) ([]byte, int64, error) {
-	return []byte{}, 0, nil
+	return o.Content, o.NumBytes, o.Error
 }
 
-func newTestObject(key string) s3.StoredObject {
-	return testObject{Key: key}
+func newTestObject(key string, content []byte, numBytes int64, err error) s3.StoredObject {
+	return testObject{Key: key, Content: content, NumBytes: numBytes, Error: err}
 }
 
 func TestPartitionS3Objects(t *testing.T) {
@@ -38,57 +42,92 @@ func TestPartitionS3Objects(t *testing.T) {
 		},
 		{
 			name: "one list item divided into one partition",
-			in: []s3.StoredObject{newTestObject("test")},
+			in: []s3.StoredObject{newTestObject("test", []byte{}, 0, nil)},
 			num: 1,
-			expected: [][]s3.StoredObject{[]s3.StoredObject{newTestObject("test")}},
+			expected: [][]s3.StoredObject{
+				[]s3.StoredObject{newTestObject("test", []byte{}, 0, nil),},
+			},
 		},
 		{
 			name: "one list item divided into two partitons",
-			in: []s3.StoredObject{newTestObject("test")},
+			in: []s3.StoredObject{newTestObject("test", []byte{}, 0, nil)},
 			num: 2,
-			expected: [][]s3.StoredObject{[]s3.StoredObject{newTestObject("test")}, []s3.StoredObject{}},
+			expected: [][]s3.StoredObject{
+				[]s3.StoredObject{newTestObject("test", []byte{}, 0, nil)}, []s3.StoredObject{},
+			},
 		},
 		{
 			name: "two list items divided into one partition",
-			in: []s3.StoredObject{newTestObject("test"), newTestObject("some")},
+			in: []s3.StoredObject{newTestObject("test", []byte{}, 0, nil), newTestObject("some", []byte{}, 0, nil)},
 			num: 1,
-			expected: [][]s3.StoredObject{[]s3.StoredObject{newTestObject("test"), newTestObject("some")}},
+			expected: [][]s3.StoredObject{
+				[]s3.StoredObject{
+					newTestObject("test", []byte{}, 0, nil),
+					newTestObject("some", []byte{}, 0, nil),
+				},
+			},
 		},
 		{
 			name: "two list items divided into two partitions",
-			in: []s3.StoredObject{newTestObject("test"), newTestObject("some")},
+			in: []s3.StoredObject{newTestObject("test", []byte{}, 0, nil), newTestObject("some", []byte{}, 0, nil)},
 			num: 2,
-			expected: [][]s3.StoredObject{[]s3.StoredObject{newTestObject("test")}, []s3.StoredObject{newTestObject("some")}},
+			expected: [][]s3.StoredObject{
+				[]s3.StoredObject{newTestObject("test", []byte{}, 0, nil)},
+				[]s3.StoredObject{newTestObject("some", []byte{}, 0, nil)},
+			},
 		},
 		{
 			name: "two list items divided into three partitions",
-			in: []s3.StoredObject{newTestObject("test"), newTestObject("some")},
+			in: []s3.StoredObject{newTestObject("test", []byte{}, 0, nil), newTestObject("some", []byte{}, 0, nil)},
 			num: 3,
 			expected: [][]s3.StoredObject{
-				[]s3.StoredObject{newTestObject("test")}, []s3.StoredObject{newTestObject("some")}, []s3.StoredObject{}},
+				[]s3.StoredObject{newTestObject("test", []byte{}, 0, nil)},
+				[]s3.StoredObject{newTestObject("some", []byte{}, 0, nil)},
+				[]s3.StoredObject{},
+			},
 		},
 		{
 			name: "three list items divided into one partition",
-			in: []s3.StoredObject{newTestObject("test"), newTestObject("some"), newTestObject("objects")},
+			in: []s3.StoredObject{
+				newTestObject("test", []byte{}, 0, nil),
+				newTestObject("some", []byte{}, 0, nil),
+				newTestObject("objects", []byte{}, 0, nil),
+			},
 			num: 1,
 			expected: [][]s3.StoredObject{
-				[]s3.StoredObject{newTestObject("test"), newTestObject("some"), newTestObject("objects")}},
+				[]s3.StoredObject{
+					newTestObject("test", []byte{}, 0, nil),
+					newTestObject("some", []byte{}, 0, nil),
+					newTestObject("objects", []byte{}, 0, nil),
+				},
+			},
 		},
 		{
 			name: "three list items divided into two partitions",
-			in: []s3.StoredObject{newTestObject("test"), newTestObject("some"), newTestObject("objects")},
+			in: []s3.StoredObject{
+				newTestObject("test", []byte{}, 0, nil),
+				newTestObject("some", []byte{}, 0, nil),
+				newTestObject("objects", []byte{}, 0, nil),
+			},
 			num: 2,
 			expected: [][]s3.StoredObject{
-				[]s3.StoredObject{newTestObject("test"), newTestObject("some")}, []s3.StoredObject{newTestObject("objects")}},
+				[]s3.StoredObject{newTestObject("test", []byte{}, 0, nil), newTestObject("some", []byte{}, 0, nil)},
+				[]s3.StoredObject{newTestObject("objects", []byte{}, 0, nil)},
+			},
 		},
 		{
 			name: "three list items divided into three partitions",
-			in: []s3.StoredObject{newTestObject("test"), newTestObject("some"), newTestObject("objects")},
+			in: []s3.StoredObject{
+				newTestObject("test", []byte{}, 0, nil),
+				newTestObject("some", []byte{}, 0, nil),
+				newTestObject("objects", []byte{}, 0, nil),
+			},
 			num: 3,
 			expected: [][]s3.StoredObject{
-				[]s3.StoredObject{newTestObject("test")},
-				[]s3.StoredObject{newTestObject("some")},
-				[]s3.StoredObject{newTestObject("objects")}},
+				[]s3.StoredObject{newTestObject("test", []byte{}, 0, nil)},
+				[]s3.StoredObject{newTestObject("some", []byte{}, 0, nil)},
+				[]s3.StoredObject{newTestObject("objects", []byte{}, 0, nil)},
+			},
 		},
 	}
 
@@ -99,12 +138,52 @@ func TestPartitionS3Objects(t *testing.T) {
 
 			for i := range actual {
 				for j := 0; j < len(tt.expected[i]); j++ {
-					if tt.expected[i][j] != actual[i][j] {
+					if tt.expected[i][j].GetKey() != actual[i][j].GetKey() {
 						t.Errorf(
-							"expected[%d][%d]: %s does not equal actual[%d][%d]: %s",
-							i, j, tt.expected[i][j], i, j, actual[i][j])
+							"expected[%d][%d] key: %s does not equal actual[%d][%d] key: %s",
+							i, j, tt.expected[i][j].GetKey(), i, j, actual[i][j].GetKey())
 					}
 				}
+			}
+		})
+	}
+}
+
+func TestGetContentExcerpt(t *testing.T) {
+	testData := []struct {
+		name       string
+		text       []byte
+		query      []byte
+		expected   []byte
+	}{
+		{"starts with query", []byte("someThing"), []byte("some"), []byte("someThing")},
+		{
+			"query in the middle but not enough chars before",
+			[]byte("someThing"),
+			[]byte("Thing"),
+			[]byte("someThing"),
+		},
+		{
+			"query in the middle not enough chars to the left and right",
+			[]byte("someThing"),
+			[]byte("meT"),
+			[]byte("someThing"),
+		},
+		{
+			"more than enough chars right and left of the query",
+			[]byte("someThingSuperLongAndWeirdOnlyForTesting"),
+			[]byte("Long"),
+			[]byte("ThingSuperLongAndWeirdOn"),
+		},
+	}
+
+	for _, tt := range testData {
+		t.Run(tt.name, func(t *testing.T) {
+
+			actual := getContentExcerpt(tt.text, tt.query)
+
+			if !bytes.Equal(tt.expected, actual) {
+				t.Errorf("expected excerpt is '%s' but actual was %s", tt.expected, actual)
 			}
 		})
 	}
