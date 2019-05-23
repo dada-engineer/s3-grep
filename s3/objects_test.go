@@ -4,11 +4,7 @@ import "testing"
 
 func TestNewObject(t *testing.T) {
 	testObject := NewObject("this_is_a_test_object")
-	if (
-		testObject.Key != "this_is_a_test_object" &&
-		testObject.Content != nil &&
-		testObject.NumBytes != 0 &&
-		testObject.Error != nil) {
+	if testObject.GetKey() != "this_is_a_test_object" {
 		t.Error("Unexpected Object")
 	}
 }

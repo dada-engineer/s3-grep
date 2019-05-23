@@ -12,36 +12,18 @@ import (
 
 // StoredObject provides an interface for Objects in a Cloud Storage
 type StoredObject interface {
-	GetObjectContent (*config.AWSSession, string) (string, int64, error)
+	GetKey () (string)
+	GetObjectContent (*config.AWSSession, string) ([]byte, int64, error)
 }
 
 // Object provides an Object with a Key
 type Object struct {
-	Object StoredObject
 	Key    string
 }
 
-// NewObject is a constructor for Objects
-func NewObject(key string) Object {
-	return Object{Key: key}
-}
-
-// ListObjects lists all objects in the specified bucket
-func ListObjects(svc s3iface.S3API, bucketName string) ([]Object, error) {
-	var objects []Object
-	err := svc.ListObjectsPages(&s3.ListObjectsInput{
-		Bucket: aws.String(bucketName),
-	}, func(p *s3.ListObjectsOutput, last bool) (shouldContinue bool) {
-		for _, obj := range p.Contents {
-			objects = append(objects, NewObject(*obj.Key))
-		}
-		return true
-	})
-	if err != nil {
-		return []Object{}, err
-	}
-
-	return objects, nil
+// GetKey is a getter method to get the Key of the Object
+func (o Object) GetKey() string {
+	return o.Key
 }
 
 // GetObjectContent loads the content of a S3 object key into a buffer
@@ -57,4 +39,27 @@ func (o Object) GetObjectContent(session *config.AWSSession, bucketName string) 
 	})
 
 	return buff.Bytes(), numBytes, err
+}
+
+// NewObject is a constructor for Objects
+func NewObject(key string) StoredObject {
+	return Object{Key: key}
+}
+
+// ListObjects lists all objects in the specified bucket
+func ListObjects(svc s3iface.S3API, bucketName string) ([]StoredObject, error) {
+	var objects []StoredObject
+	err := svc.ListObjectsPages(&s3.ListObjectsInput{
+		Bucket: aws.String(bucketName),
+	}, func(p *s3.ListObjectsOutput, last bool) (shouldContinue bool) {
+		for _, obj := range p.Contents {
+			objects = append(objects, NewObject(*obj.Key))
+		}
+		return true
+	})
+	if err != nil {
+		return []StoredObject{}, err
+	}
+
+	return objects, nil
 }
