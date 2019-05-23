@@ -10,14 +10,14 @@ import (
 	"github.com/dabdada/s3-grep/config"
 )
 
-// Object provides an interface for Objects in a S3 Bucket
-type s3Object interface {
+// StoredObject provides an interface for Objects in a Cloud Storage
+type StoredObject interface {
 	GetObjectContent (*config.AWSSession, string) (string, int64, error)
 }
 
 // Object provides an Object with a Key
 type Object struct {
-	Object s3Object
+	Object StoredObject
 	Key    string
 }
 
