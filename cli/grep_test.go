@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bytes"
+	"errors"
 	"testing"
 
 	"github.com/dabdada/s3-grep/config"
@@ -9,10 +10,10 @@ import (
 )
 
 type testObject struct {
-	Key 	 string
+	Key      string
 	Content  []byte
 	NumBytes int64
-	Error 	 error
+	Error    error
 }
 
 func (o testObject) GetKey() string {
@@ -35,31 +36,31 @@ func TestPartitionS3Objects(t *testing.T) {
 		expected [][]s3.StoredObject
 	}{
 		{
-			name: "empty list",
-			in: []s3.StoredObject{},
-			num: 1,
+			name:     "empty list",
+			in:       []s3.StoredObject{},
+			num:      1,
 			expected: [][]s3.StoredObject{},
 		},
 		{
 			name: "one list item divided into one partition",
-			in: []s3.StoredObject{newTestObject("test", []byte{}, 0, nil)},
-			num: 1,
+			in:   []s3.StoredObject{newTestObject("test", []byte{}, 0, nil)},
+			num:  1,
 			expected: [][]s3.StoredObject{
-				[]s3.StoredObject{newTestObject("test", []byte{}, 0, nil),},
+				[]s3.StoredObject{newTestObject("test", []byte{}, 0, nil)},
 			},
 		},
 		{
 			name: "one list item divided into two partitons",
-			in: []s3.StoredObject{newTestObject("test", []byte{}, 0, nil)},
-			num: 2,
+			in:   []s3.StoredObject{newTestObject("test", []byte{}, 0, nil)},
+			num:  2,
 			expected: [][]s3.StoredObject{
 				[]s3.StoredObject{newTestObject("test", []byte{}, 0, nil)}, []s3.StoredObject{},
 			},
 		},
 		{
 			name: "two list items divided into one partition",
-			in: []s3.StoredObject{newTestObject("test", []byte{}, 0, nil), newTestObject("some", []byte{}, 0, nil)},
-			num: 1,
+			in:   []s3.StoredObject{newTestObject("test", []byte{}, 0, nil), newTestObject("some", []byte{}, 0, nil)},
+			num:  1,
 			expected: [][]s3.StoredObject{
 				[]s3.StoredObject{
 					newTestObject("test", []byte{}, 0, nil),
@@ -69,8 +70,8 @@ func TestPartitionS3Objects(t *testing.T) {
 		},
 		{
 			name: "two list items divided into two partitions",
-			in: []s3.StoredObject{newTestObject("test", []byte{}, 0, nil), newTestObject("some", []byte{}, 0, nil)},
-			num: 2,
+			in:   []s3.StoredObject{newTestObject("test", []byte{}, 0, nil), newTestObject("some", []byte{}, 0, nil)},
+			num:  2,
 			expected: [][]s3.StoredObject{
 				[]s3.StoredObject{newTestObject("test", []byte{}, 0, nil)},
 				[]s3.StoredObject{newTestObject("some", []byte{}, 0, nil)},
@@ -78,8 +79,8 @@ func TestPartitionS3Objects(t *testing.T) {
 		},
 		{
 			name: "two list items divided into three partitions",
-			in: []s3.StoredObject{newTestObject("test", []byte{}, 0, nil), newTestObject("some", []byte{}, 0, nil)},
-			num: 3,
+			in:   []s3.StoredObject{newTestObject("test", []byte{}, 0, nil), newTestObject("some", []byte{}, 0, nil)},
+			num:  3,
 			expected: [][]s3.StoredObject{
 				[]s3.StoredObject{newTestObject("test", []byte{}, 0, nil)},
 				[]s3.StoredObject{newTestObject("some", []byte{}, 0, nil)},
@@ -151,10 +152,10 @@ func TestPartitionS3Objects(t *testing.T) {
 
 func TestGetContentExcerpt(t *testing.T) {
 	testData := []struct {
-		name       string
-		text       []byte
-		query      []byte
-		expected   []byte
+		name     string
+		text     []byte
+		query    []byte
+		expected []byte
 	}{
 		{"starts with query", []byte("someThing"), []byte("some"), []byte("someThing")},
 		{
@@ -214,5 +215,44 @@ func TestCaseAwareContains(t *testing.T) {
 					tt.in, tt.sub, tt.expected, actual, tt.ignoreCase)
 			}
 		})
+	}
+}
+
+func TestGrepInObjectContent(t *testing.T) {
+	results := make(chan grepResult)
+	done := make(chan int)
+	testSession, err := config.NewAWSSession("testing")
+
+	if err != nil {
+		t.Error("Could not create test aws session")
+		return
+	}
+
+	input := []s3.StoredObject{
+		newTestObject("key0", []byte("This is a test containing the word: Blueberrycheescake"), 55, nil),
+		newTestObject("key1", []byte("This is a test not containing the word."), 40, nil),
+		newTestObject("key2", []byte{}, 0, nil),
+		newTestObject("key3", []byte("This is a test containing the word, but raising an error: Blueberrycheesecake"), 59, errors.New("This is some error")),
+	}
+
+	go grepInObjectContent(testSession, "some-bucket", input, "berry", false, results, done)
+
+	finished := 0
+
+	for {
+		select {
+		case result := <-results:
+			if result.Key != "key0" {
+				t.Errorf("Key0 was expected, but is %s", result.Key)
+			}
+		case i := <-done:
+			finished += i
+		default:
+			if finished == 1 {
+				close(results)
+				close(done)
+				return
+			}
+		}
 	}
 }
