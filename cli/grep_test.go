@@ -159,22 +159,34 @@ func TestGetContentExcerpt(t *testing.T) {
 	}{
 		{"starts with query", []byte("someThing"), []byte("some"), []byte("someThing")},
 		{
-			"query in the middle but not enough chars before",
-			[]byte("someThing"),
-			[]byte("Thing"),
-			[]byte("someThing"),
+			"query in the middle but not more than MAX_EXCERPT_LENGTH chars in text",
+			[]byte("Bounty tackle nipper red ensign execution dock Sail ho spirits hail-shot scourge"),
+			[]byte("dock"),
+			[]byte("Bounty tackle nipper red ensign execution dock Sail ho spirits hail-shot scourge"),
 		},
 		{
-			"query in the middle not enough chars to the left and right",
-			[]byte("someThing"),
-			[]byte("meT"),
-			[]byte("someThing"),
+			"query in the middle not enough chars to the left",
+			[]byte("Bounty tackle nipper red ensign execution dock Sail ho spirits hail-shot scourge of the seven seas barkadeer booty keel hands provost loaded to the gunwalls"),
+			[]byte("nipper"),
+			[]byte("Bounty tackle nipper red ensign execution dock Sail ho spirits hail-shot scourge"),
+		},
+		{
+			"query in the middle not enough chars to the right",
+			[]byte("Bounty tackle nipper red ensign execution dock Sail ho spirits hail-shot scourge of the seven seas barkadeer booty keel hands provost loaded to the gunwalls"),
+			[]byte("barkadeer"),
+			[]byte("Sail ho spirits hail-shot scourge of the seven seas barkadeer booty keel hands provost loaded to the gunwalls"),
 		},
 		{
 			"more than enough chars right and left of the query",
-			[]byte("someThingSuperLongAndWeirdOnlyForTesting"),
-			[]byte("Long"),
-			[]byte("ThingSuperLongAndWeirdOn"),
+			[]byte("Bounty tackle nipper red ensign execution dock Sail ho spirits hail-shot scourge of the seven seas barkadeer booty keel hands provost loaded to the gunwalls"),
+			[]byte("shot"),
+			[]byte("nipper red ensign execution dock Sail ho spirits hail-shot scourge of the seven seas barkadeer booty keel hands provost"),
+		},
+		{
+			"more than enough chars right and left of the query, find a space in from index",
+			[]byte("Bounty tackle nipper red ensign execution dock Sail ho spirits hail-shot scourge of the seven seas barkadeer booty keel hands provost loaded to the gunwalls"),
+			[]byte("even"),
+			[]byte("execution dock Sail ho spirits hail-shot scourge of the seven seas barkadeer booty keel hands provost loaded to the gunwalls"),
 		},
 	}
 
@@ -184,7 +196,7 @@ func TestGetContentExcerpt(t *testing.T) {
 			actual := getContentExcerpt(tt.text, tt.query)
 
 			if !bytes.Equal(tt.expected, actual) {
-				t.Errorf("expected excerpt is '%s' but actual was %s", tt.expected, actual)
+				t.Errorf("expected excerpt is '%s' but actual was '%s'", tt.expected, actual)
 			}
 		})
 	}

@@ -11,6 +11,8 @@ import (
 	thisS3 "github.com/dabdada/s3-grep/s3"
 )
 
+var MAX_EXCERPT_LENGTH = 120
+
 type grepResult struct {
 	Key     string
 	LineNum int
@@ -40,7 +42,7 @@ func Grep(session *config.AWSSession, bucketName string, query string, ignoreCas
 	for {
 		select {
 		case result := <-results:
-			fmt.Printf("s3://%s/%s %s:%d\n", bucketName, result.Key, result.Excerpt, result.LineNum)
+			fmt.Printf("s3://%s/%s %d:%s\n", bucketName, result.Key, result.LineNum, result.Excerpt)
 		case i := <-done:
 			finished += i
 		default:
@@ -95,14 +97,36 @@ func grepInObjectContent(session *config.AWSSession, bucketName string, objects 
 	done <- 1
 }
 
-// Get a small Excerpt of a byte array
+// Get a Excerpt of a byte array
 //
-// 10 chars before and after the substring
+// If the line is not MAX_EXCERPT_LENGTH long, the whole text will be returned.
+// Otherwise a 120 char excerpt is returned.
 func getContentExcerpt(text []byte, query []byte) []byte {
-	queryLength := float64(len(query))
-	index := float64(bytes.Index(text, query))
-	from := int(math.Max(index-10, 0))
-	to := int(math.Min(float64(index+queryLength+ 10), float64(len(text))))
+	textLenght := len(text)
+	if textLenght <= MAX_EXCERPT_LENGTH {
+		return text
+	}
+	queryLength := len(query)
+	excerptLengthLeftAndRight := (MAX_EXCERPT_LENGTH - queryLength) / 2
+	index := bytes.Index(text, query)
+	from := int(math.Max(float64(index-excerptLengthLeftAndRight), 0))
+
+	// Do not cut in the middle of words.
+	if text[from] == byte(' ') {
+		from++
+	} else if from != 0 {
+		from = bytes.Index(text[from:textLenght], []byte(" ")) + 1 + from
+	}
+
+	to := int(math.Min(float64(index+queryLength+excerptLengthLeftAndRight), float64(textLenght)))
+	if to != textLenght {
+		offset := bytes.Index(text[to:textLenght], []byte(" "))
+		if offset < 0 {
+			to = textLenght
+		} else {
+			to += offset
+		}
+	}
 
 	return text[from:to]
 }
