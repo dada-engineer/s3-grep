@@ -241,10 +241,10 @@ func TestGrepInObjectContent(t *testing.T) {
 	}
 
 	input := []s3.StoredObject{
-		newTestObject("key0", []byte("This is a test containing the word: Blueberrycheescake"), 55, nil),
-		newTestObject("key1", []byte("This is a test not containing the word."), 40, nil),
+		newTestObject("key0", []byte("This is a test containing the word: Blueberrycheescake"), 54, nil),
+		newTestObject("key1", []byte("This is a test not containing the word."), 39, nil),
 		newTestObject("key2", []byte{}, 0, nil),
-		newTestObject("key3", []byte("This is a test containing the word, but raising an error: Blueberrycheesecake"), 59, errors.New("This is some error")),
+		newTestObject("key3", []byte("This is a test containing the word, but raising an error: Blueberrycheesecake"), 77, errors.New("This is some error")),
 	}
 
 	go grepInObjectContent(testSession, "some-bucket", input, "berry", false, results, done)
