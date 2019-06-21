@@ -60,7 +60,7 @@ func ListObjects(svc s3iface.S3API, bucketName string, prefix string) ([]StoredO
 		Bucket: aws.String(bucketName),
 	}, func(p *s3.ListObjectsOutput, last bool) (shouldContinue bool) {
 		for _, obj := range p.Contents {
-			if prefixExpression.FindString(*obj.Key) != "" {
+			if prefixExpression.MatchString(*obj.Key) {
 				objects = append(objects, NewObject(*obj.Key))
 			}
 		}
