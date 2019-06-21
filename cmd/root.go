@@ -42,7 +42,7 @@ var rootCmd = &cobra.Command{
 			fmt.Printf("The bucket name `%s` was not found in profile `%s`\n", bucketName, profile)
 			return
 		} else {
-			cli.Grep(session, bucketName, args[0], ignoreCase)
+			cli.Grep(session, bucketName, prefix, args[0], ignoreCase)
 			return
 		}
 	},
@@ -61,6 +61,7 @@ var (
 	version    bool
 	profile    string
 	bucketName string
+	prefix     string
 	ignoreCase bool
 )
 
@@ -69,6 +70,7 @@ func init() {
 	rootCmd.Flags().BoolVarP(&version, "help", "h", false, "Print the usage of s3-grep")
 	rootCmd.Flags().StringVarP(&profile, "profile", "p", "", "The AWS profile the S3 bucketName is hosted in")
 	rootCmd.Flags().StringVarP(&bucketName, "bucket", "b", "", "The bucketName name to grep in")
+	rootCmd.Flags().StringVarP(&bucketName, "prefix", "", "", "The prefix to grep in (subfolder)")
 	rootCmd.Flags().BoolVarP(&ignoreCase, "", "i", false, "Ignore case of the search query while grepping")
 
 	rootCmd.MarkFlagRequired("profile")

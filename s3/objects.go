@@ -2,6 +2,7 @@ package s3
 
 import (
 	"errors"
+	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/s3"
@@ -12,13 +13,13 @@ import (
 
 // StoredObject provides an interface for Objects in a Cloud Storage
 type StoredObject interface {
-	GetKey() (string)
+	GetKey() string
 	GetContent(*config.AWSSession, string) ([]byte, int64, error)
 }
 
 // Object provides an Object with a Key
 type Object struct {
-	Key    string
+	Key string
 }
 
 // GetKey is a getter method to get the Key of the Object
@@ -47,10 +48,11 @@ func NewObject(key string) StoredObject {
 }
 
 // ListObjects lists all objects in the specified bucket
-func ListObjects(svc s3iface.S3API, bucketName string) ([]StoredObject, error) {
+func ListObjects(svc s3iface.S3API, bucketName string, prefix string) ([]StoredObject, error) {
 	var objects []StoredObject
 	err := svc.ListObjectsPages(&s3.ListObjectsInput{
 		Bucket: aws.String(bucketName),
+		Prefix: aws.String(strings.Trim(strings.TrimSpace(prefix), "/")),
 	}, func(p *s3.ListObjectsOutput, last bool) (shouldContinue bool) {
 		for _, obj := range p.Contents {
 			objects = append(objects, NewObject(*obj.Key))

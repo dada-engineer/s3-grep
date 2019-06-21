@@ -11,7 +11,7 @@ import (
 	thisS3 "github.com/dabdada/s3-grep/s3"
 )
 
-var MAX_EXCERPT_LENGTH = 120
+var MaxExcerptLength = 120
 
 type grepResult struct {
 	Key     string
@@ -20,10 +20,10 @@ type grepResult struct {
 }
 
 // Grep in objects in a S3 bucket
-func Grep(session *config.AWSSession, bucketName string, query string, ignoreCase bool) {
+func Grep(session *config.AWSSession, bucketName string, prefix string, query string, ignoreCase bool) {
 	svc := s3.New(session.Session)
 
-	objects, err := thisS3.ListObjects(svc, bucketName)
+	objects, err := thisS3.ListObjects(svc, bucketName, prefix)
 
 	if err != nil {
 		fmt.Printf("%s\n", err)
@@ -99,15 +99,15 @@ func grepInObjectContent(session *config.AWSSession, bucketName string, objects 
 
 // Get a Excerpt of a byte array
 //
-// If the line is not MAX_EXCERPT_LENGTH long, the whole text will be returned.
+// If the line is not MaxExcerptLength long, the whole text will be returned.
 // Otherwise a 120 char excerpt is returned.
 func getContentExcerpt(text []byte, query []byte) []byte {
 	textLenght := len(text)
-	if textLenght <= MAX_EXCERPT_LENGTH {
+	if textLenght <= MaxExcerptLength {
 		return text
 	}
 	queryLength := len(query)
-	excerptLengthLeftAndRight := (MAX_EXCERPT_LENGTH - queryLength) / 2
+	excerptLengthLeftAndRight := (MaxExcerptLength - queryLength) / 2
 	index := bytes.Index(text, query)
 	from := int(math.Max(float64(index-excerptLengthLeftAndRight), 0))
 
