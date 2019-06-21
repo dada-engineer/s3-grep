@@ -27,7 +27,7 @@ func (o Object) GetKey() string {
 	return o.Key
 }
 
-// GetObjectContent loads the content of a S3 object key into a buffer
+// GetContent loads the content of a S3 object key into a buffer
 func (o Object) GetContent(session *config.AWSSession, bucketName string) ([]byte, int64, error) {
 	if o.Key == "" {
 		return []byte{}, 0, errors.New("Object has no Key")
@@ -52,7 +52,7 @@ func ListObjects(svc s3iface.S3API, bucketName string, prefix string) ([]StoredO
 	var objects []StoredObject
 	err := svc.ListObjectsPages(&s3.ListObjectsInput{
 		Bucket: aws.String(bucketName),
-		Prefix: aws.String(strings.Trim(strings.TrimSpace(prefix), "/")),
+		Prefix: aws.String(bucketName) +  "/" + aws.String(strings.Trim(strings.TrimSpace(prefix), "/")),
 	}, func(p *s3.ListObjectsOutput, last bool) (shouldContinue bool) {
 		for _, obj := range p.Contents {
 			objects = append(objects, NewObject(*obj.Key))
