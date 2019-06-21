@@ -52,7 +52,7 @@ func ListObjects(svc s3iface.S3API, bucketName string, prefix string) ([]StoredO
 	var objects []StoredObject
 	err := svc.ListObjectsPages(&s3.ListObjectsInput{
 		Bucket: aws.String(bucketName),
-		Prefix: aws.String(bucketName) +  "/" + aws.String(strings.Trim(strings.TrimSpace(prefix), "/")),
+		Prefix: aws.String(bucketName +  "/" + strings.Trim(strings.TrimSpace(prefix), "/")),
 	}, func(p *s3.ListObjectsOutput, last bool) (shouldContinue bool) {
 		for _, obj := range p.Contents {
 			objects = append(objects, NewObject(*obj.Key))
