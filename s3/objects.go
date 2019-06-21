@@ -2,6 +2,8 @@ package s3
 
 import (
 	"errors"
+	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -50,12 +52,17 @@ func NewObject(key string) StoredObject {
 // ListObjects lists all objects in the specified bucket
 func ListObjects(svc s3iface.S3API, bucketName string, prefix string) ([]StoredObject, error) {
 	var objects []StoredObject
-	err := svc.ListObjectsPages(&s3.ListObjectsInput{
+	prefixExpression, err := regexp.Compile(fmt.Sprintf("^%s", strings.Trim(strings.TrimSpace(prefix), "/")))
+	if err != nil {
+		return nil, errors.New("The provided prefix is not a valid regular expression")
+	}
+	err = svc.ListObjectsPages(&s3.ListObjectsInput{
 		Bucket: aws.String(bucketName),
-		Prefix: aws.String(bucketName +  "/" + strings.Trim(strings.TrimSpace(prefix), "/")),
 	}, func(p *s3.ListObjectsOutput, last bool) (shouldContinue bool) {
 		for _, obj := range p.Contents {
-			objects = append(objects, NewObject(*obj.Key))
+			if prefixExpression.FindString(*obj.Key) != "" {
+				objects = append(objects, NewObject(*obj.Key))
+			}
 		}
 		return true
 	})
