@@ -18,10 +18,10 @@ type grepResult struct {
 }
 
 // Grep in objects in a S3 bucket
-func Grep(session *config.AWSSession, bucketName string, query string, ignoreCase bool) {
+func Grep(session *config.AWSSession, bucketName string, prefix string, query string, ignoreCase bool) {
 	svc := s3.New(session.Session)
 
-	objects, err := thisS3.ListObjects(svc, bucketName)
+	objects, err := thisS3.ListObjects(svc, bucketName, prefix)
 
 	if err != nil {
 		fmt.Printf("%s\n", err)
@@ -102,7 +102,7 @@ func getContentExcerpt(text []byte, query []byte) []byte {
 	queryLength := float64(len(query))
 	index := float64(bytes.Index(text, query))
 	from := int(math.Max(index-10, 0))
-	to := int(math.Min(float64(index+queryLength+ 10), float64(len(text))))
+	to := int(math.Min(float64(index+queryLength+10), float64(len(text))))
 
 	return text[from:to]
 }
