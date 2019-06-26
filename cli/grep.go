@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"math"
-	"runtime"
 
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/dabdada/s3-grep/config"
@@ -22,79 +21,63 @@ type grepResult struct {
 // Grep in objects in a S3 bucket
 func Grep(session *config.AWSSession, bucketName string, prefix string, query string, ignoreCase bool) {
 	svc := s3.New(session.Session)
+	objects := make(chan thisS3.StoredObject)
+	listObjectsErrors := make(chan error)
+	listObjectsDone := make(chan bool)
+	grepResults := make(chan grepResult)
+	objectProcessed := make(chan bool)
 
-	objects, err := thisS3.ListObjects(svc, bucketName, prefix)
 
-	if err != nil {
-		fmt.Printf("%s\n", err)
-		return
-	}
+	objectsCount := 0
+	objectsProcessed := 0
+	allObjectsListed := false
 
-	results := make(chan grepResult)
-	done := make(chan int)
+	go thisS3.ListObjects(svc, bucketName, prefix, objects, listObjectsErrors, listObjectsDone)
 
-	dividedObjects := partitionS3Objects(objects, runtime.NumCPU()-1)
-	for _, chunk := range dividedObjects {
-		go grepInObjectContent(session, bucketName, chunk, query, ignoreCase, results, done)
-	}
-
-	finished := 0
 	for {
 		select {
-		case result := <-results:
+		case object := <-objects:
+			objectsCount++
+			go grepInObjectContent(session, bucketName, object, query, ignoreCase, grepResults, objectProcessed)
+		case err := <-listObjectsErrors:
+			fmt.Printf("%s\n", err)
+			return
+		case <-listObjectsDone:
+			allObjectsListed = true
+		case result := <-grepResults:
 			fmt.Printf("s3://%s/%s %d:%s\n", bucketName, result.Key, result.LineNum, result.Excerpt)
-		case i := <-done:
-			finished += i
+		case <-objectProcessed:
+			objectsProcessed++
 		default:
-			if finished == len(dividedObjects) {
-				close(results)
-				close(done)
+			if (objectsCount == objectsProcessed) && allObjectsListed {
+				close(listObjectsErrors)
+				close(objects)
+				close(grepResults)
+				close(objectProcessed)
 				return
 			}
 		}
 	}
-
-}
-
-// Divide list of objects in bucket to desiredPartitionNum same sized chunks, for concurrent processing
-func partitionS3Objects(objects []thisS3.StoredObject, desiredPartitionNum int) [][]thisS3.StoredObject {
-	var divided [][]thisS3.StoredObject
-	numObjects := len(objects)
-	chunkSize := (numObjects + desiredPartitionNum - 1) / desiredPartitionNum
-
-	for i := 0; i < numObjects; i += chunkSize {
-		end := i + chunkSize
-
-		if end > numObjects {
-			end = numObjects
-		}
-
-		divided = append(divided, objects[i:end])
-	}
-
-	return divided
 }
 
 // Grep within the content of a single S3 object
-func grepInObjectContent(session *config.AWSSession, bucketName string, objects []thisS3.StoredObject,
-	query string, ignoreCase bool, results chan<- grepResult, done chan<- int) {
-	for _, object := range objects {
-		content, numBytes, err := object.GetContent(session, bucketName)
-		if err != nil {
-			fmt.Printf("%s:%s\n", err, object.GetKey())
-		} else if numBytes > 0 {
-			for i, line := range bytes.Split(content, []byte("\n")) {
-				if caseAwareContains(line, []byte(query), ignoreCase) {
-					results <- grepResult{
-						Key:     object.GetKey(),
-						LineNum: i + 1,
-						Excerpt: getContentExcerpt(line, []byte(query)),
-					}
+func grepInObjectContent(session *config.AWSSession, bucketName string, object thisS3.StoredObject,
+						 query string, ignoreCase bool, results chan<- grepResult, processed chan<- bool) {
+	content, numBytes, err := object.GetContent(session, bucketName)
+	if err != nil {
+		fmt.Printf("%s:%s\n", err, object.GetKey())
+	} else if numBytes > 0 {
+		for i, line := range bytes.Split(content, []byte("\n")) {
+			if caseAwareContains(line, []byte(query), ignoreCase) {
+				results <- grepResult{
+					Key:     object.GetKey(),
+					LineNum: i + 1,
+					Excerpt: getContentExcerpt(line, []byte(query)),
 				}
 			}
 		}
 	}
-	done <- 1
+	processed <- true
 }
 
 // Get a Excerpt of a byte array

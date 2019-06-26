@@ -28,128 +28,6 @@ func newTestObject(key string, content []byte, numBytes int64, err error) s3.Sto
 	return testObject{Key: key, Content: content, NumBytes: numBytes, Error: err}
 }
 
-func TestPartitionS3Objects(t *testing.T) {
-	partitionS3ObjectsTestData := []struct {
-		name     string
-		in       []s3.StoredObject
-		num      int
-		expected [][]s3.StoredObject
-	}{
-		{
-			name:     "empty list",
-			in:       []s3.StoredObject{},
-			num:      1,
-			expected: [][]s3.StoredObject{},
-		},
-		{
-			name: "one list item divided into one partition",
-			in:   []s3.StoredObject{newTestObject("test", []byte{}, 0, nil)},
-			num:  1,
-			expected: [][]s3.StoredObject{
-				[]s3.StoredObject{newTestObject("test", []byte{}, 0, nil)},
-			},
-		},
-		{
-			name: "one list item divided into two partitons",
-			in:   []s3.StoredObject{newTestObject("test", []byte{}, 0, nil)},
-			num:  2,
-			expected: [][]s3.StoredObject{
-				[]s3.StoredObject{newTestObject("test", []byte{}, 0, nil)}, []s3.StoredObject{},
-			},
-		},
-		{
-			name: "two list items divided into one partition",
-			in:   []s3.StoredObject{newTestObject("test", []byte{}, 0, nil), newTestObject("some", []byte{}, 0, nil)},
-			num:  1,
-			expected: [][]s3.StoredObject{
-				[]s3.StoredObject{
-					newTestObject("test", []byte{}, 0, nil),
-					newTestObject("some", []byte{}, 0, nil),
-				},
-			},
-		},
-		{
-			name: "two list items divided into two partitions",
-			in:   []s3.StoredObject{newTestObject("test", []byte{}, 0, nil), newTestObject("some", []byte{}, 0, nil)},
-			num:  2,
-			expected: [][]s3.StoredObject{
-				[]s3.StoredObject{newTestObject("test", []byte{}, 0, nil)},
-				[]s3.StoredObject{newTestObject("some", []byte{}, 0, nil)},
-			},
-		},
-		{
-			name: "two list items divided into three partitions",
-			in:   []s3.StoredObject{newTestObject("test", []byte{}, 0, nil), newTestObject("some", []byte{}, 0, nil)},
-			num:  3,
-			expected: [][]s3.StoredObject{
-				[]s3.StoredObject{newTestObject("test", []byte{}, 0, nil)},
-				[]s3.StoredObject{newTestObject("some", []byte{}, 0, nil)},
-				[]s3.StoredObject{},
-			},
-		},
-		{
-			name: "three list items divided into one partition",
-			in: []s3.StoredObject{
-				newTestObject("test", []byte{}, 0, nil),
-				newTestObject("some", []byte{}, 0, nil),
-				newTestObject("objects", []byte{}, 0, nil),
-			},
-			num: 1,
-			expected: [][]s3.StoredObject{
-				[]s3.StoredObject{
-					newTestObject("test", []byte{}, 0, nil),
-					newTestObject("some", []byte{}, 0, nil),
-					newTestObject("objects", []byte{}, 0, nil),
-				},
-			},
-		},
-		{
-			name: "three list items divided into two partitions",
-			in: []s3.StoredObject{
-				newTestObject("test", []byte{}, 0, nil),
-				newTestObject("some", []byte{}, 0, nil),
-				newTestObject("objects", []byte{}, 0, nil),
-			},
-			num: 2,
-			expected: [][]s3.StoredObject{
-				[]s3.StoredObject{newTestObject("test", []byte{}, 0, nil), newTestObject("some", []byte{}, 0, nil)},
-				[]s3.StoredObject{newTestObject("objects", []byte{}, 0, nil)},
-			},
-		},
-		{
-			name: "three list items divided into three partitions",
-			in: []s3.StoredObject{
-				newTestObject("test", []byte{}, 0, nil),
-				newTestObject("some", []byte{}, 0, nil),
-				newTestObject("objects", []byte{}, 0, nil),
-			},
-			num: 3,
-			expected: [][]s3.StoredObject{
-				[]s3.StoredObject{newTestObject("test", []byte{}, 0, nil)},
-				[]s3.StoredObject{newTestObject("some", []byte{}, 0, nil)},
-				[]s3.StoredObject{newTestObject("objects", []byte{}, 0, nil)},
-			},
-		},
-	}
-
-	for _, tt := range partitionS3ObjectsTestData {
-		t.Run(tt.name, func(t *testing.T) {
-
-			actual := partitionS3Objects(tt.in, tt.num)
-
-			for i := range actual {
-				for j := 0; j < len(tt.expected[i]); j++ {
-					if tt.expected[i][j].GetKey() != actual[i][j].GetKey() {
-						t.Errorf(
-							"expected[%d][%d] key: %s does not equal actual[%d][%d] key: %s",
-							i, j, tt.expected[i][j].GetKey(), i, j, actual[i][j].GetKey())
-					}
-				}
-			}
-		})
-	}
-}
-
 func TestGetContentExcerpt(t *testing.T) {
 	testData := []struct {
 		name     string
@@ -232,7 +110,7 @@ func TestCaseAwareContains(t *testing.T) {
 
 func TestGrepInObjectContent(t *testing.T) {
 	results := make(chan grepResult)
-	done := make(chan int)
+	done := make(chan bool)
 	testSession, err := config.NewAWSSession("testing")
 
 	if err != nil {
@@ -247,7 +125,9 @@ func TestGrepInObjectContent(t *testing.T) {
 		newTestObject("key3", []byte("This is a test containing the word, but raising an error: Blueberrycheesecake"), 77, errors.New("This is some error")),
 	}
 
-	go grepInObjectContent(testSession, "some-bucket", input, "berry", false, results, done)
+	for _, object := range input {
+		go grepInObjectContent(testSession, "some-bucket", object, "berry", false, results, done)
+	}
 
 	finished := 0
 
@@ -257,10 +137,10 @@ func TestGrepInObjectContent(t *testing.T) {
 			if result.Key != "key0" {
 				t.Errorf("Key0 was expected, but is %s", result.Key)
 			}
-		case i := <-done:
-			finished += i
+		case <-done:
+			finished++
 		default:
-			if finished == 1 {
+			if finished == len(input) {
 				close(results)
 				close(done)
 				return

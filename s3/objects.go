@@ -50,25 +50,25 @@ func NewObject(key string) StoredObject {
 }
 
 // ListObjects lists all objects in the specified bucket
-func ListObjects(svc s3iface.S3API, bucketName string, prefix string) ([]StoredObject, error) {
-	var objects []StoredObject
+func ListObjects(svc s3iface.S3API, bucketName string, prefix string,
+				 objects chan<-StoredObject, listErrors chan<-error, done chan<-bool) {
 	prefixExpression, err := regexp.Compile(fmt.Sprintf("^%s", strings.Trim(strings.TrimSpace(prefix), "/")))
 	if err != nil {
-		return nil, errors.New("The provided prefix is not a valid regular expression")
+		listErrors <- errors.New("The provided prefix is not a valid regular expression")
+		return
 	}
 	err = svc.ListObjectsPages(&s3.ListObjectsInput{
 		Bucket: aws.String(bucketName),
 	}, func(p *s3.ListObjectsOutput, last bool) (shouldContinue bool) {
 		for _, obj := range p.Contents {
-			if prefixExpression.MatchString(*obj.Key) {
-				objects = append(objects, NewObject(*obj.Key))
+			if prefixExpression.MatchString(*obj.Key) && !strings.HasSuffix(*obj.Key, "/") {
+				objects <- NewObject(*obj.Key)
 			}
 		}
 		return true
 	})
 	if err != nil {
-		return []StoredObject{}, err
+		listErrors <- err
 	}
-
-	return objects, nil
+	done <- true
 }
