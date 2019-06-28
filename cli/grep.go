@@ -24,9 +24,8 @@ func Grep(session *config.AWSSession, bucketName string, prefix string, query st
 	objects := make(chan thisS3.StoredObject)
 	listObjectsErrors := make(chan error)
 	listObjectsDone := make(chan bool)
-	grepResults := make(chan grepResult)
+	grepResults := make(chan *grepResult)
 	objectProcessed := make(chan bool)
-
 
 	objectsCount := 0
 	objectsProcessed := 0
@@ -44,8 +43,8 @@ func Grep(session *config.AWSSession, bucketName string, prefix string, query st
 			return
 		case <-listObjectsDone:
 			allObjectsListed = true
-		case result := <-grepResults:
-			fmt.Printf("s3://%s/%s %d:%s\n", bucketName, result.Key, result.LineNum, result.Excerpt)
+		case grepResult := <-grepResults:
+			fmt.Printf("s3://%s/%s %d:%s\n", bucketName, grepResult.Key, grepResult.LineNum, grepResult.Excerpt)
 		case <-objectProcessed:
 			objectsProcessed++
 		default:
@@ -62,14 +61,14 @@ func Grep(session *config.AWSSession, bucketName string, prefix string, query st
 
 // Grep within the content of a single S3 object
 func grepInObjectContent(session *config.AWSSession, bucketName string, object thisS3.StoredObject,
-						 query string, ignoreCase bool, results chan<- grepResult, processed chan<- bool) {
+	query string, ignoreCase bool, results chan<- *grepResult, processed chan<- bool) {
 	content, numBytes, err := object.GetContent(session, bucketName)
 	if err != nil {
 		fmt.Printf("%s:%s\n", err, object.GetKey())
 	} else if numBytes > 0 {
 		for i, line := range bytes.Split(content, []byte("\n")) {
 			if caseAwareContains(line, []byte(query), ignoreCase) {
-				results <- grepResult{
+				results <- &grepResult{
 					Key:     object.GetKey(),
 					LineNum: i + 1,
 					Excerpt: getContentExcerpt(line, []byte(query)),

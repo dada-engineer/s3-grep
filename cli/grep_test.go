@@ -109,7 +109,7 @@ func TestCaseAwareContains(t *testing.T) {
 }
 
 func TestGrepInObjectContent(t *testing.T) {
-	results := make(chan grepResult)
+	results := make(chan *grepResult)
 	done := make(chan bool)
 	testSession, err := config.NewAWSSession("testing")
 
