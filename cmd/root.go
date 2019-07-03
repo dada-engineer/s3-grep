@@ -70,7 +70,7 @@ func init() {
 	rootCmd.Flags().BoolVarP(&version, "help", "h", false, "Print the usage of s3-grep")
 	rootCmd.Flags().StringVarP(&profile, "profile", "p", "", "The AWS profile the S3 bucketName is hosted in")
 	rootCmd.Flags().StringVarP(&bucketName, "bucket", "b", "", "The bucketName name to grep in")
-	rootCmd.Flags().StringVarP(&bucketName, "prefix", "", "", "The prefix to grep in (subfolder)")
+	rootCmd.Flags().StringVarP(&prefix, "prefix", "", "", "The prefix to grep in (subfolder)")
 	rootCmd.Flags().BoolVarP(&ignoreCase, "", "i", false, "Ignore case of the search query while grepping")
 
 	rootCmd.MarkFlagRequired("profile")
