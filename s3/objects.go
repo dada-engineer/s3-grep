@@ -25,12 +25,12 @@ type Object struct {
 }
 
 // GetKey is a getter method to get the Key of the Object
-func (o Object) GetKey() string {
+func (o *Object) GetKey() string {
 	return o.Key
 }
 
 // GetContent loads the content of a S3 object key into a buffer
-func (o Object) GetContent(session *config.AWSSession, bucketName string) ([]byte, int64, error) {
+func (o *Object) GetContent(session *config.AWSSession, bucketName string) ([]byte, int64, error) {
 	if o.Key == "" {
 		return []byte{}, 0, errors.New("Object has no Key")
 	}
@@ -46,7 +46,7 @@ func (o Object) GetContent(session *config.AWSSession, bucketName string) ([]byt
 
 // NewObject is a constructor for Objects
 func NewObject(key string) StoredObject {
-	return Object{Key: key}
+	return &Object{Key: key}
 }
 
 // ListObjects lists all objects in the specified bucket
