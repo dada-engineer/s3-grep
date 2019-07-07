@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"math"
+	"runtime"
 
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/dabdada/s3-grep/config"
@@ -21,10 +22,10 @@ type grepResult struct {
 // Grep in objects in a S3 bucket
 func Grep(session *config.AWSSession, bucketName string, prefix string, query string, ignoreCase bool) {
 	svc := s3.New(session.Session)
-	objects := make(chan thisS3.StoredObject)
+	objects := make(chan thisS3.StoredObject, runtime.NumCPU())
 	listObjectsErrors := make(chan error)
 	listObjectsDone := make(chan bool)
-	grepResults := make(chan *grepResult)
+	grepResults := make(chan *grepResult, runtime.NumCPU())
 	objectProcessed := make(chan bool)
 
 	objectsCount := 0
