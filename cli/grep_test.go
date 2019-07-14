@@ -3,6 +3,7 @@ package cli
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/dabdada/s3-grep/config"
@@ -110,7 +111,7 @@ func TestCaseAwareContains(t *testing.T) {
 
 func TestGrepInObjectContent(t *testing.T) {
 	results := make(chan *grepResult)
-	done := make(chan bool)
+	done := make(chan struct{})
 	testSession, err := config.NewAWSSession("testing")
 
 	if err != nil {
@@ -129,7 +130,7 @@ func TestGrepInObjectContent(t *testing.T) {
 		go grepInObjectContent(testSession, "some-bucket", object, "berry", false, results, done)
 	}
 
-	finished := 0
+	var finished int
 
 	for {
 		select {
@@ -138,6 +139,7 @@ func TestGrepInObjectContent(t *testing.T) {
 				t.Errorf("Key0 was expected, but is %s", result.Key)
 			}
 		case <-done:
+			fmt.Println("done")
 			finished++
 		default:
 			if finished == len(input) {

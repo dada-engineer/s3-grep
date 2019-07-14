@@ -51,7 +51,7 @@ func NewObject(key string) StoredObject {
 
 // ListObjects lists all objects in the specified bucket
 func ListObjects(svc s3iface.S3API, bucketName string, prefix string,
-	objects chan<- StoredObject, listErrors chan<- error, done chan<- bool) {
+	objects chan<- StoredObject, listErrors chan<- error, done chan<- struct{}) {
 	prefixExpression, err := regexp.Compile(fmt.Sprintf("^%s", strings.Trim(strings.TrimSpace(prefix), "/")))
 	if err != nil {
 		listErrors <- errors.New("The provided prefix is not a valid regular expression")
@@ -70,5 +70,5 @@ func ListObjects(svc s3iface.S3API, bucketName string, prefix string,
 	if err != nil {
 		listErrors <- err
 	}
-	done <- true
+	done <- struct{}{}
 }
