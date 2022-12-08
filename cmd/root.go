@@ -38,13 +38,26 @@ var rootCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		if ok := s3.IsBucket(*session, bucketName); !ok {
-			fmt.Printf("The bucket name `%s` was not found in profile `%s`\n", bucketName, profile)
-			return
-		} else {
-			cli.Grep(session, bucketName, prefix, args[0], ignoreCase)
-			return
+		region, err := s3.GetBucketRegion(bucketName)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
 		}
+
+		session.Session.Config.Region = &region
+
+		ok, err := s3.IsBucket(*session, bucketName)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+
+		if !ok {
+			fmt.Printf("The bucket name `%s` was not found in profile `%s`\n", bucketName, profile)
+			os.Exit(1)
+		}
+
+		cli.Grep(session, bucketName, prefix, args[0], ignoreCase)
 	},
 }
 
