@@ -11,7 +11,8 @@ import (
 
 // Get bucket region: https://github.com/aws/aws-sdk-go/issues/720
 func GetBucketRegion(bucketName string) (string, error) {
-	res, err := http.Head(fmt.Sprintf("https://%s.s3.amazonaws.com", bucketName))
+	bucketUri := fmt.Sprintf("https://%s.s3.amazonaws.com", bucketName)
+	res, err := http.Head(bucketUri)
 
 	if err != nil {
 		return "", err
@@ -22,7 +23,7 @@ func GetBucketRegion(bucketName string) (string, error) {
 	header := "X-Amz-Bucket-Region"
 
 	if len(res.Header[header]) == 0 {
-		return "", fmt.Errorf("header not found in response: %s", header)
+		return "", fmt.Errorf("header '%s' not found in response for bucket: %s", header, bucketUri)
 	}
 
 	return res.Header.Get(header), nil
