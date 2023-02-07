@@ -1,6 +1,7 @@
 package config
 
 import (
+	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 )
 
@@ -11,12 +12,18 @@ type AWSSession struct {
 
 // NewAWSParams creates a new AWSSession object
 func NewAWSSession(awsProfile string) (*AWSSession, error) {
-	sess := session.Must(session.NewSessionWithOptions(session.Options{
+	sess, err := session.NewSessionWithOptions(session.Options{
+		Config:            aws.Config{Region: aws.String("us-east-2")},
 		Profile:           awsProfile,
 		SharedConfigState: session.SharedConfigEnable,
-	}))
+	})
+
+	if err != nil {
+		return nil, err
+	}
 
 	return &AWSSession{
 		Session: sess,
 	}, nil
+
 }
